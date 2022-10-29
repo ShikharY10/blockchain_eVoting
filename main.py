@@ -1,13 +1,17 @@
 from pydantic import BaseModel
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from blockchain.chain import Chain
 from db.userdata import UserData
 import utils
 import sys
+import uvicorn
 
 print("Starting Decentralised Voting System")
 token = input("Create a access token: ")
-orgDetails = utils.takeOrgDetails()
+orgDetails, orgNames, leaderNames, orgCodes = utils.takeOrgDetails()
 
 if len(orgDetails.keys()) < 2:
     print("At least two organisation shoudl be registered")
@@ -17,6 +21,7 @@ chain = Chain(10)
 userData = UserData()
 
 orgVoteCount: "dict[str, list[str]]" = {}
+castedVoters : "list[str]" = []
 print("Voting system is ready")
 
 controller = {
@@ -24,7 +29,34 @@ controller = {
     "isStoped": False
 }
 
+
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+@app.get("/", response_class=HTMLResponse)
+async def showHome(request: Request):
+    return templates.TemplateResponse(
+        "item.html", {
+            "request": request
+        }
+    )
+
+@app.get("/confirmation", response_class=HTMLResponse)
+def showConfirmation(request: Request):
+    return templates.TemplateResponse(
+        "confirma.html", {
+            "request": request
+        }
+    )
+
+@app.get("/getOrgDetail")
+def getOrgDetail():
+    return {
+        "orgNames": orgNames,
+        "leaderNames": leaderNames,
+        "orgCodes": orgCodes,
+    }
 
 @app.post("/admin/start")
 def startVoting(item: utils.Token):
@@ -45,34 +77,65 @@ def stopVoting(item: utils.Token):
         }
 
 @app.post("/voter/vote")
-def CastVote(item: utils.Vote):
+async def CastVote(request: Request):
+    formData = await request.form()
+    formDict = formData._dict
+    print(formData)
+    print("Reached")
     if controller["isStarted"]:
-        if item.userId in userData.data:
-            try:
-                orgName = orgDetails[item.orgCode]
-                chain.add_to_pool(orgName)
-                hash: str = chain.mine()
+        if formDict["userId"] in userData.data:
+            if formDict["userId"] not in castedVoters:
                 try:
-                    votes = orgVoteCount[orgName]
-                    votes.append(hash)
-                    orgVoteCount[orgName] = votes
+                    orgName = orgDetails[formDict["orgCode"]]
+                    chain.add_to_pool(orgName)
+                    hash: str = chain.mine()
+                    try:
+                        votes = orgVoteCount[orgName]
+                        votes.append(hash)
+                        orgVoteCount[orgName] = votes
+                    except KeyError:
+                        orgVoteCount[orgName] = [hash]
+                    castedVoters.append(formDict["userId"])
+                    return templates.TemplateResponse(
+                        "confirm.html", {
+                            "request": request,
+                            "status": "successfull",
+                            "organisation": orgName,
+                            "description": "Hash -> " + hash
+                        }
+                    )
                 except KeyError:
-                    orgVoteCount[orgName] = [hash]
-                return {
-                    "status": "successfull"
-                }
-            except KeyError:
-                return {
-                    "status": "Invalid Organisation Details"
-                }
+                    return templates.TemplateResponse(
+                        "confirm.html", {
+                            "request": request,
+                            "status": "unsuccessful",
+                            "description": "Invalid Organisation Details"
+                        }
+                    )
+            else:
+                return templates.TemplateResponse(
+                    "confirm.html", {
+                        "request": request,
+                        "status": "unsuccessful",
+                        "description": "you have already casted your vote"
+                    }
+                )
         else:
-            return {
-                    "status": "Invalid userId"
+            return templates.TemplateResponse(
+                "confirm.html", {
+                    "request": request,
+                    "status": "unsuccessful",
+                    "description": "Invalid userId"
                 }
+            )
     else:
-        return {
-                    "status": "Voting is closed or it is not started"
-                }
+        return templates.TemplateResponse(
+                    "confirma.html", {
+                        "request": request,
+                        "status": "unsuccessful",
+                        "description": "Voting is closed or it is not started"
+                    }
+                )
 
 @app.get("/getvotes")
 def getTotalVotes():
@@ -99,9 +162,6 @@ def getVotesByOrg():
         result[org] = count
     return result
 
-# admin/start - POST - secured
-# admin/stop - POST - secured
-# admin/getTotalVoteCount  - GET - access is possible only after the voting stop
+if __name__ == "__main__":
+    uvicorn.run(app)
 
-# voter/vote - POST - unsecured
-# voter/getTotalVoteCount - GET - access is possible only after the voting stop

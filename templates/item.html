@@ -1,0 +1,103 @@
+<html>
+<head>
+    <title>E-Voting</title>
+    <link href="{{ url_for('static', path='/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <h1 id="page_title">WELCOME TO BLOCKCHAIN BASED E-VOTING</h1>
+    <div class="div-class">
+        <table id="table">
+            <tr class="table-heading">
+                <th class="table_row">Organization</th>
+                <th class="table_row">Leader</th>
+                <th class="table_row">Code</th>
+            </tr>
+        </table>
+        <br>
+        <br>
+        <form action="/voter/vote" method="post">
+            <label for="userId">User ID: </label>
+            <input id="userId" type="text" name="userId">
+            <br>
+            <br>
+            <label for="orgCode">Organization: </label>
+            <select id="orgCode" name="orgCode">
+                <option value=0>NOTA</option>
+            </select>
+            <br>
+            <br>
+            <button type="submit">Vote</button>
+        </form>
+    </div>
+</body>
+<script>
+
+    function createTableElements(jsonData) {
+
+        for (var i = 0; i < jsonData["leaderNames"].length; i++) {
+            var tr = document.createElement("tr");
+            tr.className = "table-column";
+
+            var td1 = document.createElement("th");
+            td1.innerText = jsonData["orgNames"][i]
+            td1.className = "table_row";
+            tr.appendChild(td1);
+
+            var td2 = document.createElement("th");
+            td2.innerText = jsonData["leaderNames"][i]
+            td2.className = "table_row";
+            tr.appendChild(td2);
+
+            var td3 = document.createElement("th");
+            td3.innerText = jsonData["orgCodes"][i]
+            td3.className = "table_row";
+            tr.appendChild(td3);
+
+            var parent = document.getElementById("table");
+            parent.appendChild(tr);
+        }        
+    }
+
+    function createSelectElements(jsonData) {
+        for (var i = 0; i < jsonData["leaderNames"].length; i++) {
+            var parent = document.getElementById("orgCode");
+            var option = document.createElement("option");
+            option.value = jsonData["orgCodes"][i];
+            option.innerText = jsonData["orgNames"][i];
+            parent.appendChild(option);
+        }
+    }
+
+    function getOrgDetail() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://127.0.0.1:8000/getOrgDetail");
+        xhr.send();
+        xhr.onload = () => {
+            jsonData = JSON.parse(xhr.responseText)
+            createTableElements(jsonData)
+            createSelectElements(jsonData)
+        }
+    }
+
+    // function handleSubmit(event) {
+    //     event.preventDefault();
+    //     const data = new FormData(event.target);
+    //     const userID = data.get("userId");
+    //     const orgCode = data.get("org");
+    //     console.log(
+    //         {
+    //             "userId": userID,
+    //             "orgCode": orgCode
+    //         }
+    //     );
+    // }
+
+    // console.log(length);
+    // console.log("{{ orgNames }}".toString());
+
+    getOrgDetail();
+
+    // const form = document.querySelector('form');
+    // form.className =addEventListener('submit', handleSubmit);
+</script>
+</html>
