@@ -1,6 +1,6 @@
 # BlockChain_eVoting <br/>
 
-### Blockchain Based eYoting using Rest APIs
+### Blockchain Based E-Voting using Rest APIs
 
 It a blockchain based python app that provide eVoting using Rest API.
 
