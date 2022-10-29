@@ -6,13 +6,17 @@ It a blockchain based python app that provide eVoting using Rest API.
 
 > It uses FastAPI for API developement
 
-> Use uvicorn to run the server => `uvicorn main:app --reload`
+> How to run => `python3 main.go`
+
+> After running, Go to `127.0.0.1:8000/` for voting.
+
+## Features:
 
 - Support admin access using access token
 - Support Organisation registration for voting
 - Support Organisatio based vote counting
 
-## Awailable API routes
+## Awailable API routes:
 
 `/admin/start` => POST | For starting the voting
 
